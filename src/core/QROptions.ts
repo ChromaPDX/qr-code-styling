@@ -7,6 +7,14 @@ export interface RequiredOptions extends Options {
   type: DrawType;
   width: number;
   height: number;
+  fit?: boolean;
+  auto?: boolean;
+  viewBox?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
   margin: number;
   data: string;
   qrOptions: {
