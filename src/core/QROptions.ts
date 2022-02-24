@@ -8,7 +8,6 @@ export interface RequiredOptions extends Options {
   width: number;
   height: number;
   fit?: boolean;
-  auto?: boolean;
   viewBox?: {
     x: number;
     y: number;
@@ -45,6 +44,7 @@ const defaultOptions: RequiredOptions = {
   type: drawTypes.canvas,
   width: 300,
   height: 300,
+  fit: false,
   data: "",
   margin: 0,
   qrOptions: {
