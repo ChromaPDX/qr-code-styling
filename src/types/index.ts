@@ -124,11 +124,13 @@ export type Options = {
   cornersSquareOptions?: {
     type?: CornerSquareType;
     color?: string;
+    colors?: string[];
     gradient?: Gradient;
   };
   cornersDotOptions?: {
     type?: CornerDotType;
     color?: string;
+    colors?: string[];
     gradient?: Gradient;
   };
   backgroundOptions?: {

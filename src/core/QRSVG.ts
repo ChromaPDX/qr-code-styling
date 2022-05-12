@@ -58,13 +58,21 @@ export default class QRSVG {
   //TODO don't pass all options to this class
   constructor(options: RequiredOptions) {
     this._element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const viewBox = {
-      x: 0,
-      y: 0,
-      width: options.width,
-      height: options.height,
-      ...options.viewBox
-    };
+    const viewBox = options.bezel
+      ? {
+          x: -options.bezel.depth,
+          y: -options.bezel.depth,
+          width: options.width + options.bezel.depth,
+          height: options.height + options.bezel.depth,
+          ...options.viewBox
+        }
+      : {
+          x: 0,
+          y: 0,
+          width: options.width,
+          height: options.height,
+          ...options.viewBox
+        };
     this._element.setAttribute(
       "viewBox",
       `${String(viewBox.x)} ${String(viewBox.y)} ${String(viewBox.width)} ${String(viewBox.height)}`
@@ -134,7 +142,7 @@ export default class QRSVG {
     this.drawDots((i: number, j: number): boolean => {
       if (this._options.imageOptions.hideBackgroundDots) {
         if (this._options.imageOptions.hideShape === "radial") {
-          const r = (drawImageSize.hideXDots || this._options?.imageOptions?.hideManualSize || 0) * 0.7;
+          const r = (drawImageSize.hideXDots || this._options?.imageOptions?.hideManualSize || 0) * 0.5;
           const center = count / 2;
           const d = Math.pow(r, 2) - (Math.pow(center - i, 2) + Math.pow(center - j, 2));
           // console.log({ r, d, i, j });
@@ -189,6 +197,27 @@ export default class QRSVG {
         });
       }
     }
+    if (options.bezel) {
+      const count = this._qr?.getModuleCount() || 0;
+      const { dotSize, xBeginning, yBeginning } = measureQr(options, count);
+      const color = options.bezel?.color || options.cornersSquareOptions?.color || "#000000";
+
+      this._createBezel({
+        options: options.bezel,
+        dotSize,
+        xBeginning,
+        yBeginning,
+        count,
+        color: color,
+        colors: options.cornersSquareOptions?.colors,
+        additionalRotation: 0,
+        x: 0,
+        y: 0,
+        height: options.height,
+        width: options.width,
+        name: "bezel"
+      });
+    }
   }
 
   drawDots(filter?: FilterFunction): void {
@@ -234,7 +263,7 @@ export default class QRSVG {
         dot.draw(
           xBeginning + i * dotSize,
           yBeginning + j * dotSize,
-          dotSize,
+          dotSize * (options.dotsOptions?.scale || 1.05),
           (xOffset: number, yOffset: number): boolean => {
             if (i + xOffset < 0 || j + yOffset < 0 || i + xOffset >= count || j + yOffset >= count) return false;
             if (filter && !filter(i + xOffset, j + yOffset)) return false;
@@ -270,13 +299,17 @@ export default class QRSVG {
       [0, 0, 0],
       [1, 0, Math.PI / 2],
       [0, 1, -Math.PI / 2]
-    ].forEach(([column, row, rotation]) => {
+    ].forEach(([column, row, rotation], i) => {
       const x = xBeginning + column * dotSize * (count - 7);
       const y = yBeginning + row * dotSize * (count - 7);
       let cornersSquareClipPath = this._dotsClipPath;
       let cornersDotClipPath = this._dotsClipPath;
 
-      if (options.cornersSquareOptions?.gradient || options.cornersSquareOptions?.color) {
+      if (
+        options.cornersSquareOptions?.gradient ||
+        options.cornersSquareOptions?.colors ||
+        options.cornersSquareOptions?.color
+      ) {
         cornersSquareClipPath = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
         cornersSquareClipPath.setAttribute("id", `clip-path-corners-square-color-${column}-${row}`);
         this._defs.appendChild(cornersSquareClipPath);
@@ -284,7 +317,9 @@ export default class QRSVG {
 
         this._createColor({
           options: options.cornersSquareOptions?.gradient,
-          color: options.cornersSquareOptions?.color,
+          color: options.cornersSquareOptions?.colors
+            ? options.cornersSquareOptions?.colors[i]
+            : options.cornersSquareOptions?.color,
           additionalRotation: rotation,
           x,
           y,
@@ -296,12 +331,18 @@ export default class QRSVG {
 
       if (options.cornersSquareOptions?.type) {
         const cornersSquare = new QRCornerSquare({ svg: this._element, type: options.cornersSquareOptions.type });
-
         cornersSquare.draw(x, y, cornersSquareSize, rotation);
 
         if (cornersSquare._element && cornersSquareClipPath) {
           cornersSquareClipPath.appendChild(cornersSquare._element);
         }
+
+        // const cornersShadow = new QRCornerSquare({ svg: this._element, type: options.cornersSquareOptions.type });
+        // cornersShadow.draw(x - 10, y - 10, cornersSquareSize, rotation);
+
+        // if (cornersShadow._element && cornersSquareClipPath) {
+        //   cornersSquareClipPath.appendChild(cornersShadow._element);
+        // }
       } else {
         const dot = new QRDot({ svg: this._element, type: options.dotsOptions.type });
 
@@ -379,11 +420,12 @@ export default class QRSVG {
   loadImage(): Promise<void> {
     return new Promise((resolve, reject) => {
       const options = this._options;
-      const image = new Image();
 
       if (!options.image) {
         return reject("Image is not defined");
       }
+
+      const image = new Image();
 
       if (typeof options.imageOptions.crossOrigin === "string") {
         image.crossOrigin = options.imageOptions.crossOrigin;
@@ -416,14 +458,45 @@ export default class QRSVG {
     const dw = width - options.imageOptions.margin * 2;
     const dh = height - options.imageOptions.margin * 2;
 
-    const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-    image.setAttribute("href", options.image || "");
-    image.setAttribute("x", String(dx));
-    image.setAttribute("y", String(dy));
-    image.setAttribute("width", `${dw}px`);
-    image.setAttribute("height", `${dh}px`);
+    if (typeof options?.image == "string") {
+      const imageString = options.image as string;
+      let svgString;
+      if (imageString?.indexOf("data:image/svg+xml;base64,") !== -1) {
+        const b64 = imageString.replace("data:image/svg+xml;base64,", "");
+        svgString = Buffer.from(b64, "base64").toString("utf8");
+      } else {
+        svgString = imageString;
+      }
+      // console.log("image is svgString", svgString);
+      let g = document.createElement("g");
+      g.innerHTML = svgString;
+      try {
+        const innerSvg = g.getElementsByTagName("svg");
+        const innerG = innerSvg[0].getElementsByTagName("g")[0];
+        if (innerG) g = innerG as any;
+        else {
+          // console.log("nested svg does not wrap G");
+        }
+      } catch (e) {
+        console.log("bad svg image element");
+      }
+      g.setAttribute("transform", `translate(${dx}, ${dy})`);
+      // g.setAttribute("y", String(dy));
+      // g.setAttribute("width", `${dw}px`);
+      // g.setAttribute("height", `${dh}px`);
+      // g.appendChild(g);
+      // console.log("append element", g);
+      this._element.appendChild(g);
+    } else if (options.imageOptions) {
+      const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+      image.setAttribute("href", options.image || "");
+      image.setAttribute("x", String(dx));
+      image.setAttribute("y", String(dy));
+      image.setAttribute("width", `${dw}px`);
+      image.setAttribute("height", `${dh}px`);
 
-    this._element.appendChild(image);
+      this._element.appendChild(image);
+    }
   }
 
   _createColor({
@@ -520,5 +593,115 @@ export default class QRSVG {
     }
 
     this._element.appendChild(rect);
+  }
+
+  _createBezel({
+    options,
+    color,
+    colors,
+    count,
+    height,
+    width,
+    xBeginning,
+    yBeginning,
+    dotSize
+  }: {
+    options: {
+      depth: number;
+      strokeWidth?: number;
+      strokeLineCap?: string;
+    };
+    xBeginning: number;
+    yBeginning: number;
+    dotSize: number;
+    count: number;
+    color: string;
+    colors?: string[];
+    additionalRotation: number;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    name: string;
+  }): void {
+    const sw = options?.strokeWidth || 3;
+    const _depth = options.depth - sw / 3;
+    // const _name = name || 'bezel';
+    const squares = [
+      {
+        center: [0, 0],
+        lines: [
+          [0, 0],
+          [1, 0],
+          [0, 1]
+        ],
+        color: colors ? colors[0] : color
+      },
+      {
+        center: [1, 0],
+        lines: [
+          [0, 0],
+          [1, 0]
+        ],
+        color: colors ? colors[1] : color
+      },
+      {
+        center: [0, 1],
+        lines: [
+          [0, 0],
+          [0, 1]
+        ],
+        color: colors ? colors[2] : color
+      }
+    ];
+    for (const s of squares) {
+      const middleL = dotSize * (count - 7);
+      const ss = dotSize * 6.5;
+      const cx = s.center[0] * middleL;
+      const cy = s.center[1] * middleL;
+      for (const l of s.lines) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        const _x = xBeginning + cx + l[0] * ss;
+        const _y = yBeginning + cy + l[1] * ss;
+        line.setAttribute("x1", String(_x));
+        line.setAttribute("y1", String(_y));
+        line.setAttribute("x2", String(_x - _depth));
+        line.setAttribute("y2", String(_y - _depth));
+        line.setAttribute("stroke", s.color);
+        line.setAttribute("stroke-width", String(sw ? sw / 2 : 2));
+        line.setAttribute("stroke-linecap", options?.strokeLineCap || "square");
+        // rect.setAttribute("height", String(height));
+        // rect.setAttribute("width", String(width));
+        // line.setAttribute("clip-path", `url('#clip-path-${_name}')`);
+        this._element.appendChild(line);
+      }
+    }
+    const edges = [
+      [
+        [0, 0],
+        [1, 0]
+      ],
+      [
+        [0, 0],
+        [0, 1]
+      ]
+    ];
+    for (const lineSegment of edges) {
+      const [sv, ev] = lineSegment;
+      const _depth = options.depth;
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", String(sv[0] * width - _depth));
+      line.setAttribute("y1", String(sv[1] * height - _depth));
+      line.setAttribute("x2", String(ev[0] * width - _depth - (sw / 6) * ev[0]));
+      line.setAttribute("y2", String(ev[1] * height - _depth - (sw / 6) * ev[1]));
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", String(sw || 4));
+      // line.setAttribute("stroke-linecap", "round");
+      // rect.setAttribute("height", String(height));
+      // rect.setAttribute("width", String(width));
+      // line.setAttribute("clip-path", `url('#clip-path-${_name}')`);
+      this._element.appendChild(line);
+    }
+    // console.log("create bezel!", this._element);
   }
 }

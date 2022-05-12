@@ -21,6 +21,11 @@ export interface RequiredOptions extends Options {
     mode?: Mode;
     errorCorrectionLevel: ErrorCorrectionLevel;
   };
+  bezel?: {
+    depth: number;
+    color?: string;
+    colors?: string[];
+  };
   imageOptions: {
     hideBackgroundDots: boolean;
     hideShape?: "square" | "radial";
@@ -33,6 +38,7 @@ export interface RequiredOptions extends Options {
     type: DotType;
     color: string;
     gradient?: Gradient;
+    scale?: number;
   };
   backgroundOptions: {
     color: string;
