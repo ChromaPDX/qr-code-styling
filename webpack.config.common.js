@@ -12,6 +12,7 @@ module.exports = {
     filename: "qr-code-styling.js",
     library: "QRCodeStyling",
     libraryTarget: "umd",
+    globalObject: 'globalThis',
     libraryExport: "default"
   },
   module: {

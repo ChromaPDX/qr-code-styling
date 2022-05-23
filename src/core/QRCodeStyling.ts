@@ -1,7 +1,7 @@
 import getMode from "../tools/getMode";
 import mergeDeep from "../tools/merge";
 import downloadURI from "../tools/downloadURI";
-import QRCanvas from "./QRCanvas";
+import type QRCanvas from "./QRCanvas";
 import QRSVG from "./QRSVG";
 import drawTypes from "../constants/drawTypes";
 
@@ -54,8 +54,11 @@ export default class QRCodeStyling {
         canvas = this._canvas;
         promise = this._canvasDrawingPromise;
       } else {
-        canvas = new QRCanvas(this._options);
-        promise = canvas.drawQR(this._qr);
+        throw new Error(
+          "omitting QR Canvas from build, re-enable here (change from 'import type' to 'import' above) if required"
+        );
+        // canvas = new QRCanvas(this._options);
+        // promise = canvas.drawQR(this._qr);
       }
 
       await promise;
@@ -77,10 +80,13 @@ export default class QRCodeStyling {
     this._qr.make();
 
     if (this._options.type === drawTypes.canvas) {
-      this._canvas = new QRCanvas(this._options);
-      this._canvasDrawingPromise = this._canvas.drawQR(this._qr);
-      this._svgDrawingPromise = undefined;
-      this._svg = undefined;
+      throw new Error(
+        "omitting QR Canvas from build, re-enable here (change from 'import type' to 'import' above) if required"
+      );
+      // this._canvas = new QRCanvas(this._options);
+      // this._canvasDrawingPromise = this._canvas.drawQR(this._qr);
+      // this._svgDrawingPromise = undefined;
+      // this._svg = undefined;
     } else {
       this._svg = new QRSVG(this._options);
       this._svgDrawingPromise = this._svg.drawQR(this._qr);
