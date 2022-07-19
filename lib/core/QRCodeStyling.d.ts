@@ -1,4 +1,4 @@
-import QRCanvas from "./QRCanvas";
+import type QRCanvas from "./QRCanvas";
 import QRSVG from "./QRSVG";
 import { RequiredOptions } from "./QROptions";
 import { Extension, QRCode, Options, DownloadOptions } from "../types";
