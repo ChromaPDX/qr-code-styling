@@ -458,44 +458,42 @@ export default class QRSVG {
     const dw = width - options.imageOptions.margin * 2;
     const dh = height - options.imageOptions.margin * 2;
 
-    if (typeof options?.image == "string") {
+    if (options?.image && typeof options?.image === "string") {
       const imageString = options.image as string;
       let svgString;
       if (imageString?.indexOf("data:image/svg+xml;base64,") !== -1) {
         const b64 = imageString.replace("data:image/svg+xml;base64,", "");
         svgString = Buffer.from(b64, "base64").toString("utf8");
-      } else {
-        svgString = imageString;
-      }
-      // console.log("image is svgString", svgString);
-      let g = document.createElement("g");
-      g.innerHTML = svgString;
-      try {
-        const innerSvg = g.getElementsByTagName("svg");
-        const innerG = innerSvg[0].getElementsByTagName("g")[0];
-        if (innerG) g = innerG as any;
-        else {
-          // console.log("nested svg does not wrap G");
+        // console.log("image is svgString", svgString);
+        let g = document.createElement("g");
+        g.innerHTML = svgString;
+        try {
+          const innerSvg = g.getElementsByTagName("svg");
+          const innerG = innerSvg[0].getElementsByTagName("g")[0];
+          if (innerG) g = innerG as any;
+          else {
+            // console.log("nested svg does not wrap G");
+          }
+          g.setAttribute("transform", `translate(${dx}, ${dy})`);
+          // g.setAttribute("y", String(dy));
+          // g.setAttribute("width", `${dw}px`);
+          // g.setAttribute("height", `${dh}px`);
+          // g.appendChild(g);
+          // console.log("append element", g);
+          this._element.appendChild(g);
+        } catch (error) {
+          console.log("skip bad svg image element", error);
         }
-      } catch (e) {
-        console.log("bad svg image element");
-      }
-      g.setAttribute("transform", `translate(${dx}, ${dy})`);
-      // g.setAttribute("y", String(dy));
-      // g.setAttribute("width", `${dw}px`);
-      // g.setAttribute("height", `${dh}px`);
-      // g.appendChild(g);
-      // console.log("append element", g);
-      this._element.appendChild(g);
-    } else if (options.imageOptions) {
-      const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-      image.setAttribute("href", options.image || "");
-      image.setAttribute("x", String(dx));
-      image.setAttribute("y", String(dy));
-      image.setAttribute("width", `${dw}px`);
-      image.setAttribute("height", `${dh}px`);
+      } else {
+        const image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        image.setAttribute("href", options.image || "");
+        image.setAttribute("x", String(dx));
+        image.setAttribute("y", String(dy));
+        image.setAttribute("width", `${dw}px`);
+        image.setAttribute("height", `${dh}px`);
 
-      this._element.appendChild(image);
+        this._element.appendChild(image);
+      }
     }
   }
 
