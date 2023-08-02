@@ -60,19 +60,19 @@ export default class QRSVG {
     this._element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     const viewBox = options.bezel
       ? {
-          x: -options.bezel.depth,
-          y: -options.bezel.depth,
-          width: options.width + options.bezel.depth,
-          height: options.height + options.bezel.depth,
-          ...options.viewBox
-        }
+        x: -options.bezel.depth,
+        y: -options.bezel.depth,
+        width: options.width + options.bezel.depth,
+        height: options.height + options.bezel.depth,
+        ...options.viewBox
+      }
       : {
-          x: 0,
-          y: 0,
-          width: options.width,
-          height: options.height,
-          ...options.viewBox
-        };
+        x: 0,
+        y: 0,
+        width: options.width,
+        height: options.height,
+        ...options.viewBox
+      };
     this._element.setAttribute(
       "viewBox",
       `${String(viewBox.x)} ${String(viewBox.y)} ${String(viewBox.width)} ${String(viewBox.height)}`
@@ -121,16 +121,20 @@ export default class QRSVG {
     this._qr = qr;
 
     if (this._options.image) {
+      // console.log("qr-code-styling image:", this._options.image);
+
       //We need it to get image size
       await this.loadImage();
       if (!this._image) return;
+      // console.log("qr-code-styling: image size", this._image.width, this._image.height);
+
       const { imageOptions, qrOptions } = this._options;
       const coverLevel = imageOptions.imageSize * errorCorrectionPercents[qrOptions.errorCorrectionLevel];
       const maxHiddenDots = Math.floor(coverLevel * count * count);
 
       drawImageSize = calculateImageSize({
-        originalWidth: this._image.width,
-        originalHeight: this._image.height,
+        originalWidth: this._image.width || imageOptions.width,
+        originalHeight: this._image.height || imageOptions.height || imageOptions.width,
         maxHiddenDots,
         maxHiddenAxisDots: count - 14,
         dotSize
@@ -458,10 +462,12 @@ export default class QRSVG {
     const dw = width - options.imageOptions.margin * 2;
     const dh = height - options.imageOptions.margin * 2;
 
+    console.log("Draw QR Image", dx, dy, dw, dh);
+
     if (options?.image && typeof options?.image === "string") {
       const imageString = options.image as string;
       let svgString;
-      if (imageString?.indexOf("data:image/svg+xml;base64,") !== -1) {
+      if (imageString?.indexOf("data:image/svg+xml;base64,") === 0) {
         const b64 = imageString.replace("data:image/svg+xml;base64,", "");
         svgString = Buffer.from(b64, "base64").toString("utf8");
         // console.log("image is svgString", svgString);
@@ -470,7 +476,7 @@ export default class QRSVG {
         try {
           const innerSvg = g.getElementsByTagName("svg");
           const innerG = innerSvg[0].getElementsByTagName("g")[0];
-          if (innerG) g = innerG as any;
+          if (innerG) g = innerG as any as HTMLElement;
           else {
             // console.log("nested svg does not wrap G");
           }
